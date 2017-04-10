@@ -28,7 +28,7 @@ public class Bill {
 	static Float[] size = new Float[]{33f,35f,37f,41f,43f,47f,51f,55f,57f,59f,60f,61f,63f,66.5f,68f,69f,70f,70.5f,71f,72f,73f,74f,74.5f,78.3f,78.5f,82.3f,82.5f,83.5f,86f,86.3f,105f};
 	static String[] paperStyle=new String[]{"90高强瓦楞芯纸","100高强瓦楞芯纸","120高强瓦楞芯纸","140高强瓦楞芯纸","110高强瓦楞芯纸","70高强瓦楞芯纸","105高强瓦楞芯纸","130高强瓦楞芯纸","160高强瓦楞芯纸"};
 	static Random r = new Random();
-	
+
 	public static void main(String[] args) throws BiffException, IOException, RowsExceededException, WriteException {
 		// TODO Auto-generated method stub
 		//read the source data from xls
@@ -51,17 +51,20 @@ public class Bill {
 			Cell c2 = firstSheet.getCell(1,s);			//price
 			Cell c3 = firstSheet.getCell(2, s);		//money
 			paperArray = produceData(Float.parseFloat(c2.getContents().trim()), Float.parseFloat(c3.getContents().trim()));
+			if(paperArray == null || paperArray.length==0){
+				break;
+			}
 			// the first row:佛山市南海蓝天鹅造纸有限公司送货单
 			firstWriteSheet.mergeCells(0, writeMark, 9, writeMark);
 			Label label1 = new Label(0,writeMark,"佛山市南海蓝天鹅造纸有限公司送货单");
 			firstWriteSheet.addCell(label1);
 			writeMark = writeMark +1;
-			
+
 			firstWriteSheet.mergeCells(0, writeMark, 9, writeMark);		
 			Label label2 = new Label(0,writeMark,"地址：佛山市南海区西樵镇海舟村　　电话：86828868  86825555   传真：86815767");
 			firstWriteSheet.addCell(label2);
 			writeMark = writeMark +1;
-			
+
 			firstWriteSheet.mergeCells(0, writeMark, 6, writeMark);	
 			firstWriteSheet.mergeCells(7, writeMark, 9, writeMark);	
 			Label label3 = new Label(0,writeMark,"客户:"+c1.getContents().trim());
@@ -69,13 +72,13 @@ public class Bill {
 			Label label4 = new Label(7,writeMark,"日期:"+dfSimple.format(d));
 			firstWriteSheet.addCell(label4);
 			writeMark = writeMark +1;	
-			
+
 			firstWriteSheet.mergeCells(0, writeMark, 3, writeMark);	
 			firstWriteSheet.mergeCells(4, writeMark, 5, writeMark);	
 			firstWriteSheet.mergeCells(6, writeMark, 7, writeMark);	
 			Label label5 = new Label(0,writeMark,"品名");
 			firstWriteSheet.addCell(label5);
-			Label label6 = new Label(4,writeMark,"总价数");
+			Label label6 = new Label(4,writeMark,"总件数");
 			firstWriteSheet.addCell(label6);
 			Label label7 = new Label(6,writeMark,"总重量");
 			firstWriteSheet.addCell(label7);
@@ -84,16 +87,71 @@ public class Bill {
 			Label label9 = new Label(9,writeMark,"金额");
 			firstWriteSheet.addCell(label9);
 			writeMark = writeMark +1;
-			
+
 			firstWriteSheet.mergeCells(0, writeMark, 3, writeMark);	
 			firstWriteSheet.mergeCells(4, writeMark, 5, writeMark);	
 			firstWriteSheet.mergeCells(6, writeMark, 7, writeMark);	
 			int paperStyleRandom = r.nextInt(paperStyle.length-1);
 			Label label10 = new Label(0,writeMark,paperStyle[paperStyleRandom]);
 			firstWriteSheet.addCell(label10);
+			Label label11 = new Label(4,writeMark,""+countArrayElement(paperArray));
+			firstWriteSheet.addCell(label11);
+			Float money = Float.parseFloat(c3.getContents());
+			Float price = Float.parseFloat(c2.getContents());
+			Float weightTotal = money*1000/price;
+			BigDecimal   b   =   new   BigDecimal(weightTotal); 
+			weightTotal =   b.setScale(2,   BigDecimal.ROUND_HALF_UP).floatValue();
+			Label label12 = new Label(6,writeMark,""+weightTotal);
+			firstWriteSheet.addCell(label12);
+			Label label13 = new Label(8,writeMark,c2.getContents());
+			firstWriteSheet.addCell(label13);
+			Label label14 = new Label(9,writeMark,c3.getContents());
+			firstWriteSheet.addCell(label14);
+			writeMark = writeMark+1;
 			
-
-			writeMark = writeMark+2;
+			//the important thing,put out the array
+			List weightList = null;
+			int colMark=0;
+			for(int t=0; t<paperArray.length; t++){
+				weightList = paperArray[t].getWeight();
+				int weightSize = weightList.size();
+				if(weightList !=null && weightSize != 0){
+					Label labelCol = new Label(colMark,writeMark,paperArray[t].size+"");
+					firstWriteSheet.addCell(labelCol);
+					
+					Iterator iter = weightList.iterator();
+					int rowMark = writeMark+1;
+					int rowMod = 0;
+					while(iter.hasNext()){
+						Float temp = (Float) iter.next();
+						Label label = new Label(colMark,rowMark,temp.intValue()+"");
+						firstWriteSheet.addCell(label);
+						rowMod++;
+						rowMark = rowMark+1;
+						if(rowMod%4 == 0){
+							colMark++;
+							rowMark = writeMark+1;
+						}
+					}
+					if(rowMark != writeMark+4 ){
+						colMark++;
+					}
+				}
+			}
+			writeMark = writeMark+5;
+			Label label15 = new Label(0,writeMark,"发货人：琼");
+			firstWriteSheet.addCell(label15);
+			Label label16 = new Label(4,writeMark,"车号：");
+			firstWriteSheet.addCell(label16);
+			Label label17 = new Label(7,writeMark,"签收单位：");
+			firstWriteSheet.addCell(label17);
+			writeMark = writeMark+1;
+			
+			firstWriteSheet.mergeCells(0, writeMark, 6, writeMark);	
+			Label label18 = new Label(0,writeMark,"(1)存根(白)　(2)收款(红)　(3)收货仓库记帐(蓝)　(4)财务(黄)");
+			firstWriteSheet.addCell(label18);
+			
+			writeMark = writeMark+3;
 		}
 		writeBook.write();
 		writeBook.close();
@@ -116,10 +174,8 @@ public class Bill {
 		int success=0;
 		int superTimes = 0;
 		//super circulation time<100,so if we can't get result using 10000 times,we will give up the data
-		int quantity=0;
 		Paper[] paperArray = null;
 		while(superTimes<10000){
-			quantity=0;
 			//random to produce size array
 			for(int i=0;i<sizeSum;){
 				temp=r.nextInt(sizeLength-2)+1;
@@ -131,11 +187,6 @@ public class Bill {
 			}
 
 			Arrays.sort(array);
-//			System.out.println("sort arrays:");
-//			for(int j=0;j<sizeSum;j++){
-//				System.out.println(size[array[j]]);
-//			}
-			//produce object include min,max,size parameter
 			paperArray = new Paper[sizeSum];
 			for(int j=0;j<sizeSum;j++){
 				orginalSize = size[array[j]];
@@ -152,19 +203,7 @@ public class Bill {
 				int result = judgeDataInPaper(paperArray,weight);
 				if(result==1){
 					System.out.println("superTimes: "+superTimes);
-					for(int t=0;t<sizeSum;t++){
-						if(paperArray[t].getWeight()!=null && paperArray[t].getWeight().size()>0){
-							quantity = quantity + paperArray[t].getWeight().size();
-							System.out.println("Size: "+paperArray[t].getSize()+"  quantity: "+paperArray[t].getWeight().size());
-							Iterator it1 = paperArray[t].getWeight().iterator();
-							while(it1.hasNext()){
-								System.out.println(it1.next());
-							}
-							System.out.println("=========");
-						}
-					}
-					System.out.println("total quantity: "+quantity);
-					if(quantity<=40){
+					if(countArrayElement(paperArray)<=40){
 						success=1;
 						superTimes=10000;
 					}
@@ -193,13 +232,32 @@ public class Bill {
 		}
 		return null;
 	}
-	
+
 	public static  boolean judgeDataInArray(int a[],int e){
 		if(a==null) return false;
 		for(int i=0;i<a.length;i++){
 			if(a[i]==e) return false;
 		}
 		return true;
+	}
+
+	public static int countArrayElement(Paper[] paperArray){
+		int quantity= 0;
+		if(paperArray == null || paperArray.length == 0){
+			return quantity;
+		}
+		for(int t=0;t<paperArray.length;t++){
+			if(paperArray[t].getWeight()!=null && paperArray[t].getWeight().size()>0){
+				quantity = quantity + paperArray[t].getWeight().size();
+				System.out.println("Size: "+paperArray[t].getSize()+"  quantity: "+paperArray[t].getWeight().size());
+				Iterator it1 = paperArray[t].getWeight().iterator();
+				while(it1.hasNext()){
+					System.out.println(it1.next());
+				}
+				System.out.println("=========");
+			}
+		}
+		return quantity;
 	}
 
 	public static  int judgeDataInPaper(Paper a[],float weight){
