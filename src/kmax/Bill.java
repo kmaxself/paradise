@@ -14,12 +14,15 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Random;
 
+import org.apache.log4j.Logger;
+
 import jxl.Cell;
 import jxl.CellView;
 import jxl.Sheet;
 import jxl.Workbook;
 import jxl.format.Alignment;
 import jxl.format.CellFormat;
+import jxl.format.Colour;
 import jxl.format.VerticalAlignment;
 import jxl.read.biff.BiffException;
 import jxl.write.Border;
@@ -35,86 +38,128 @@ import jxl.write.biff.RowsExceededException;
 
 public class Bill {
 	static Float[] size = new Float[]{33f,35f,37f,41f,43f,47f,51f,55f,57f,59f,60f,61f,63f,66.5f,68f,69f,70f,70.5f,71f,72f,73f,74f,74.5f,78.3f,78.5f,82.3f,82.5f,83.5f,86f,86.3f,105f};
-	static String[] paperStyle=new String[]{"90¸ßÇ¿ÍßÀãĞ¾Ö½","100¸ßÇ¿ÍßÀãĞ¾Ö½","120¸ßÇ¿ÍßÀãĞ¾Ö½","140¸ßÇ¿ÍßÀãĞ¾Ö½","110¸ßÇ¿ÍßÀãĞ¾Ö½","70¸ßÇ¿ÍßÀãĞ¾Ö½","105¸ßÇ¿ÍßÀãĞ¾Ö½","130¸ßÇ¿ÍßÀãĞ¾Ö½","160¸ßÇ¿ÍßÀãĞ¾Ö½"};
+	static String[] paperStyle=new String[]{"90é«˜å¼ºç“¦æ¥èŠ¯çº¸","100é«˜å¼ºç“¦æ¥èŠ¯çº¸","120é«˜å¼ºç“¦æ¥èŠ¯çº¸","140é«˜å¼ºç“¦æ¥èŠ¯çº¸","110é«˜å¼ºç“¦æ¥èŠ¯çº¸","70é«˜å¼ºç“¦æ¥èŠ¯çº¸","105é«˜å¼ºç“¦æ¥èŠ¯çº¸","130é«˜å¼ºç“¦æ¥èŠ¯çº¸","160é«˜å¼ºç“¦æ¥èŠ¯çº¸"};
 	static Random r = new Random();
-
-	public static void main(String[] args) throws BiffException, IOException, RowsExceededException, WriteException {
+	static Logger logger = Logger.getLogger(Bill.class);
+	public static void main(String[] args) throws WriteException {
 		// TODO Auto-generated method stub
 		//read the source data from xls
 		Workbook rwb = null;
 		String sFilePath = "./file/bill.xls"; 
-		InputStream is = new FileInputStream(sFilePath);
-		rwb = Workbook.getWorkbook(is);
+		InputStream is = null;
+		try {
+			is = new FileInputStream(sFilePath);
+		} catch (FileNotFoundException e1) {
+			// TODO Auto-generated catch block
+			e1.printStackTrace();
+			logger.info(e1.getMessage());
+		}
+		try {
+			rwb = Workbook.getWorkbook(is);
+		} catch (BiffException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+			logger.info(e.getMessage());
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+			logger.info(e.getMessage());
+		}
 		Sheet firstSheet = rwb.getSheet(0);
-		int rows = firstSheet.getRows();//»ñÈ¡¹¤×÷±íÖĞµÄ×ÜĞĞÊı 
+		int rows = firstSheet.getRows();//è·å–å·¥ä½œè¡¨ä¸­çš„æ€»è¡Œæ•° 
 		Date d = new Date();
 		SimpleDateFormat df = new SimpleDateFormat("yyyy-MM-dd-hh-mm-ss");
-		SimpleDateFormat dfSimple = new SimpleDateFormat("MMÔÂddÈÕ");
+		SimpleDateFormat dfSimple = new SimpleDateFormat("MMæœˆddæ—¥");
 		String fileNamePart = df.format(d);
-		WritableWorkbook writeBook = Workbook.createWorkbook(new File("./file/bill-"+fileNamePart+".xls")); 
+		WritableWorkbook writeBook = null;
+		try {
+			writeBook = Workbook.createWorkbook(new File("./file/bill-"+fileNamePart+".xls"));
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+			logger.info(e.getMessage());
+		} 
 		WritableSheet firstWriteSheet = writeBook.createSheet("bill", 1);
-
+		WritableSheet resultWriteSheet = writeBook.createSheet("result", 2);
+		resultWriteSheet.addCell(new Label(0,0,"å…¬å¸"));
+		resultWriteSheet.addCell(new Label(1,0,"å•ä»·"));
+		resultWriteSheet.addCell(new Label(2,0,"é‡‘é¢"));
+		resultWriteSheet.addCell(new Label(3,0,"å¼€ç¥¨ç»“æœ"));
+		resultWriteSheet.setColumnView(0,40);
 		int writeMark=0;
 		Paper[] paperArray = null;
-		for(int s=1;s<rows;s++){
+		int totalCompany=0;
+		float totalMoney=0.0f;
+		int s=1;
+		for(s=1;s<rows;s++){
+			logger.info("======= original row: "+s);
 			Cell c1 = firstSheet.getCell(0,s);			//company name
 			Cell c2 = firstSheet.getCell(1,s);			//price
 			Cell c3 = firstSheet.getCell(2, s);		//money
+			resultWriteSheet.addCell(new Label(0,s,c1.getContents()));
+			resultWriteSheet.addCell(new Label(1,s,c2.getContents()));
+			resultWriteSheet.addCell(new Label(2,s,c3.getContents()));
+			Label labelResult = null;
 			paperArray = produceData(Float.parseFloat(c2.getContents().trim()), Float.parseFloat(c3.getContents().trim()));
+			WritableFont red = new WritableFont(WritableFont.createFont("å®‹ä½“"));
+			red.setColour(Colour.RED);
+			WritableCellFormat redFormat = new WritableCellFormat(red);
 			if(paperArray == null || paperArray.length==0){
-				break;
+				labelResult = new Label(3,s,"å¼€ç¥¨å¤±è´¥",redFormat);
+				resultWriteSheet.addCell(labelResult);
+				continue;
 			}
 			//set row height
-			// the first row:·ğÉ½ÊĞÄÏº£À¶Ìì¶ìÔìÖ½ÓĞÏŞ¹«Ë¾ËÍ»õµ¥
-			WritableFont first = new WritableFont(WritableFont.createFont("ËÎÌå"),20, WritableFont.BOLD); 
+			// the first row:ä½›å±±å¸‚å—æµ·è“å¤©é¹…é€ çº¸æœ‰é™å…¬å¸é€è´§å•
+			WritableFont first = new WritableFont(WritableFont.createFont("å®‹ä½“"),20, WritableFont.BOLD); 
 			WritableCellFormat firstFormat = new WritableCellFormat(first);
 			firstWriteSheet.mergeCells(0, writeMark, 9, writeMark);
-			Label label1 = new Label(0,writeMark,"·ğÉ½ÊĞÄÏº£À¶Ìì¶ìÔìÖ½ÓĞÏŞ¹«Ë¾ËÍ»õµ¥",firstFormat);
+			Label label1 = new Label(0,writeMark,"ä½›å±±å¸‚å—æµ·è“å¤©é¹…é€ çº¸æœ‰é™å…¬å¸é€è´§å•",firstFormat);
 			firstWriteSheet.addCell(label1);
 			writeMark = writeMark +1;
 
-			WritableFont font2 = new WritableFont(WritableFont.createFont("ËÎÌå"),11, WritableFont.BOLD); 
+			WritableFont font2 = new WritableFont(WritableFont.createFont("å®‹ä½“"),11, WritableFont.BOLD); 
 			WritableCellFormat format = new WritableCellFormat(font2);
 			format.setVerticalAlignment(VerticalAlignment .CENTRE);
 			firstWriteSheet.mergeCells(0, writeMark, 9, writeMark);		
-			Label label2 = new Label(0,writeMark,"µØÖ·£º·ğÉ½ÊĞÄÏº£ÇøÎ÷éÔÕòº£ÖÛ´å¡¡¡¡µç»°£º86828868  86825555   ´«Õæ£º86815767",format);
+			Label label2 = new Label(0,writeMark,"åœ°å€ï¼šä½›å±±å¸‚å—æµ·åŒºè¥¿æ¨µé•‡æµ·èˆŸæ‘ã€€ã€€ç”µè¯ï¼š86828868  86825555   ä¼ çœŸï¼š86815767",format);
 			firstWriteSheet.addCell(label2);
 			writeMark = writeMark +1;
 
-			WritableFont font3 = new WritableFont(WritableFont.createFont("ËÎÌå"),14, WritableFont.BOLD); 
+			WritableFont font3 = new WritableFont(WritableFont.createFont("å®‹ä½“"),14, WritableFont.BOLD); 
 			WritableCellFormat format3 = new WritableCellFormat(font3);
 			format3.setVerticalAlignment(VerticalAlignment .CENTRE);
 			firstWriteSheet.mergeCells(0, writeMark, 6, writeMark);	
 			firstWriteSheet.mergeCells(7, writeMark, 9, writeMark);	
-			Label label3 = new Label(0,writeMark,"¿Í»§:"+c1.getContents().trim(),format3);
+			Label label3 = new Label(0,writeMark,"å®¢æˆ·:"+c1.getContents().trim(),format3);
 			firstWriteSheet.addCell(label3);
 			WritableCellFormat format32 = new WritableCellFormat(font3);
 			format32.setVerticalAlignment(VerticalAlignment .CENTRE);
 			format32.setAlignment(Alignment.RIGHT);
-			Label label4 = new Label(7,writeMark,"ÈÕÆÚ:"+dfSimple.format(d),format32);
+			Label label4 = new Label(7,writeMark,"æ—¥æœŸ:"+dfSimple.format(d),format32);
 			firstWriteSheet.addCell(label4);
 			writeMark = writeMark +1;	
 
-			WritableFont font41 = new WritableFont(WritableFont.createFont("ËÎÌå"),12, WritableFont.BOLD); 
+			WritableFont font41 = new WritableFont(WritableFont.createFont("å®‹ä½“"),12, WritableFont.BOLD); 
 			WritableCellFormat format41 = new WritableCellFormat(font41);
 			format41.setVerticalAlignment(VerticalAlignment .CENTRE);
 			format41.setAlignment(Alignment.CENTRE);
 			firstWriteSheet.mergeCells(0, writeMark, 3, writeMark);	
 			firstWriteSheet.mergeCells(4, writeMark, 5, writeMark);	
 			firstWriteSheet.mergeCells(6, writeMark, 7, writeMark);	
-			Label label5 = new Label(0,writeMark,"Æ·Ãû",format41);
+			Label label5 = new Label(0,writeMark,"å“å",format41);
 			firstWriteSheet.addCell(label5);
-			Label label6 = new Label(4,writeMark,"×Ü¼şÊı",format41);
+			Label label6 = new Label(4,writeMark,"æ€»ä»¶æ•°",format41);
 			firstWriteSheet.addCell(label6);
-			Label label7 = new Label(6,writeMark,"×ÜÖØÁ¿",format41);
+			Label label7 = new Label(6,writeMark,"æ€»é‡é‡",format41);
 			firstWriteSheet.addCell(label7);
-			Label label8 = new Label(8,writeMark,"µ¥¼Û",format41);
+			Label label8 = new Label(8,writeMark,"å•ä»·",format41);
 			firstWriteSheet.addCell(label8);
-			Label label9 = new Label(9,writeMark,"½ğ¶î",format41);
+			Label label9 = new Label(9,writeMark,"é‡‘é¢",format41);
 			firstWriteSheet.addCell(label9);
 			writeMark = writeMark +1;
 
-			WritableFont font51 = new WritableFont(WritableFont.createFont("ËÎÌå"),11, WritableFont.BOLD); 
+			WritableFont font51 = new WritableFont(WritableFont.createFont("å®‹ä½“"),11, WritableFont.BOLD); 
 			WritableCellFormat format51 = new WritableCellFormat(font51);
 			format51.setVerticalAlignment(VerticalAlignment .CENTRE);
 			format51.setAlignment(Alignment.CENTRE);
@@ -187,32 +232,43 @@ public class Bill {
 			writeMark = writeMark+5;
 			WritableCellFormat format111 = new WritableCellFormat(font51);
 			format111.setVerticalAlignment(VerticalAlignment .CENTRE);
-			Label label15 = new Label(0,writeMark,"·¢»õÈË£ºÇí",format111);
+			Label label15 = new Label(0,writeMark,"å‘è´§äººï¼šç¼",format111);
 			firstWriteSheet.addCell(label15);
-			Label label16 = new Label(4,writeMark,"³µºÅ£º",format111);
+			Label label16 = new Label(4,writeMark,"è½¦å·ï¼š",format111);
 			firstWriteSheet.addCell(label16);
-			Label label17 = new Label(7,writeMark,"Ç©ÊÕµ¥Î»£º",format111);
+			Label label17 = new Label(7,writeMark,"ç­¾æ”¶å•ä½ï¼š",format111);
 			firstWriteSheet.addCell(label17);
 			writeMark = writeMark+1;
 			
 			WritableCellFormat format121 = new WritableCellFormat(font51);
 			format121.setVerticalAlignment(VerticalAlignment .CENTRE);
 			firstWriteSheet.mergeCells(0, writeMark, 6, writeMark);	
-			Label label18 = new Label(0,writeMark,"(1)´æ¸ù(°×)¡¡(2)ÊÕ¿î(ºì)¡¡(3)ÊÕ»õ²Ö¿â¼ÇÕÊ(À¶)¡¡(4)²ÆÎñ(»Æ)",format121);
+			Label label18 = new Label(0,writeMark,"(1)å­˜æ ¹(ç™½)ã€€(2)æ”¶æ¬¾(çº¢)ã€€(3)æ”¶è´§ä»“åº“è®°å¸(è“)ã€€(4)è´¢åŠ¡(é»„)",format121);
 			firstWriteSheet.addCell(label18);
 			
 			writeMark = writeMark+3;
 			for(int m=0; m<writeMark;m++){
 				firstWriteSheet.setRowView(m,555,false);
 			}
+			totalCompany++;
+			totalMoney = totalMoney+Float.parseFloat(c3.getContents().trim());
+			labelResult = new Label(3,s,"å¼€ç¥¨æˆåŠŸ");
+			resultWriteSheet.addCell(labelResult);
 		}
-		writeBook.write();
-		writeBook.close();
+		resultWriteSheet.mergeCells(0, s, 3, s);	
+		resultWriteSheet.addCell(new Label(0,s,"å¼€ç¥¨æ•°: "+totalCompany+"  å¼€ç¥¨æ€»é‡‘é¢ï¼š"+totalMoney));
+		try {
+			writeBook.write();
+			writeBook.close();
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+			logger.info(e.getMessage());
+		}
 	}
 
 	public static Paper[] produceData(float price, float totalMoney){
-		float originalWeight = totalMoney*1000/price;   //µ¥Î»kg
-		System.out.println("originalWeight: "+originalWeight);
+		float originalWeight = totalMoney*1000/price;   //å•ä½kg
 		BigDecimal   b   =   new   BigDecimal(originalWeight); 
 		originalWeight =   b.setScale(2,   BigDecimal.ROUND_HALF_UP).floatValue();
 		//get 1-5 size from size pool in random
@@ -255,7 +311,6 @@ public class Bill {
 				//judge if the request in anyone paper scale
 				int result = judgeDataInPaper(paperArray,weight);
 				if(result==1){
-					System.out.println("superTimes: "+superTimes);
 					if(countArrayElement(paperArray)<=28){
 						success=1;
 						superTimes=10000;
@@ -280,7 +335,7 @@ public class Bill {
 			return paperArray;
 		}
 		if(success!=1){
-			System.out.println("fail to get result!");
+			logger.info("fail to get result!");
 			return null;
 		}
 		return null;
@@ -302,12 +357,10 @@ public class Bill {
 		for(int t=0;t<paperArray.length;t++){
 			if(paperArray[t].getWeight()!=null && paperArray[t].getWeight().size()>0){
 				quantity = quantity + paperArray[t].getWeight().size();
-				System.out.println("Size: "+paperArray[t].getSize()+"  quantity: "+paperArray[t].getWeight().size());
-				Iterator it1 = paperArray[t].getWeight().iterator();
-				while(it1.hasNext()){
-					System.out.println(it1.next());
-				}
-				System.out.println("=========");
+//				Iterator it1 = paperArray[t].getWeight().iterator();
+//				while(it1.hasNext()){
+//					logger.info(it1.next());
+//				}
 			}
 		}
 		return quantity;
