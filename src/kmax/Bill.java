@@ -21,24 +21,21 @@ import jxl.CellView;
 import jxl.Sheet;
 import jxl.Workbook;
 import jxl.format.Alignment;
-import jxl.format.CellFormat;
 import jxl.format.Colour;
+import jxl.format.UnderlineStyle;
 import jxl.format.VerticalAlignment;
 import jxl.read.biff.BiffException;
-import jxl.write.Border;
-import jxl.write.BorderLineStyle;
 import jxl.write.Label;
-import jxl.write.WritableCell;
 import jxl.write.WritableCellFormat;
 import jxl.write.WritableFont;
 import jxl.write.WritableSheet;
 import jxl.write.WritableWorkbook;
 import jxl.write.WriteException;
-import jxl.write.biff.RowsExceededException;
 
 public class Bill {
 	static Float[] size = new Float[]{33f,35f,37f,41f,43f,47f,51f,55f,57f,59f,60f,61f,63f,66.5f,68f,69f,70f,70.5f,71f,72f,73f,74f,74.5f,78.3f,78.5f,82.3f,82.5f,83.5f,86f,86.3f,105f};
 	static String[] paperStyle=new String[]{"90高强瓦楞芯纸","100高强瓦楞芯纸","120高强瓦楞芯纸","140高强瓦楞芯纸","110高强瓦楞芯纸","70高强瓦楞芯纸","105高强瓦楞芯纸","130高强瓦楞芯纸","160高强瓦楞芯纸"};
+	static String[] car = {"粤Y31671","粤Y31688","粤Y26013"};
 	static Random r = new Random();
 	static Logger logger = Logger.getLogger(Bill.class);
 	public static void main(String[] args) throws WriteException {
@@ -69,8 +66,13 @@ public class Bill {
 		int rows = firstSheet.getRows();//获取工作表中的总行数 
 		Date d = new Date();
 		SimpleDateFormat df = new SimpleDateFormat("yyyy-MM-dd-hh-mm-ss");
-		SimpleDateFormat dfSimple = new SimpleDateFormat("MM月dd日");
+		SimpleDateFormat dfSimple = new SimpleDateFormat("yyyy-MM-dd");
 		String fileNamePart = df.format(d);
+		SimpleDateFormat numberDf = new SimpleDateFormat("yyyyMMdd");
+		String numberString = numberDf.format(d);
+		
+		int number = 1111;
+		
 		WritableWorkbook writeBook = null;
 		try {
 			writeBook = Workbook.createWorkbook(new File("./file/bill-"+fileNamePart+".xls"));
@@ -99,8 +101,15 @@ public class Bill {
 			resultWriteSheet.addCell(new Label(0,s,c1.getContents()));
 			resultWriteSheet.addCell(new Label(1,s,c2.getContents()));
 			resultWriteSheet.addCell(new Label(2,s,c3.getContents()));
+			if(c1.getContents() == null || c1.getContents().trim().equals("")){
+				continue;
+			}
 			Label labelResult = null;
-			paperArray = produceData(Float.parseFloat(c2.getContents().trim()), Float.parseFloat(c3.getContents().trim()));
+			try{
+				paperArray = produceData(Float.parseFloat(c2.getContents().trim()), Float.parseFloat(c3.getContents().trim()));
+			}catch(Exception e){
+				logger.error(e.getMessage());
+			}
 			WritableFont red = new WritableFont(WritableFont.createFont("宋体"));
 			red.setColour(Colour.RED);
 			WritableCellFormat redFormat = new WritableCellFormat(red);
@@ -111,14 +120,23 @@ public class Bill {
 			}
 			//set row height
 			// the first row:佛山市南海蓝天鹅造纸有限公司送货单
-			WritableFont first = new WritableFont(WritableFont.createFont("宋体"),20, WritableFont.BOLD); 
+			WritableFont first = new WritableFont(WritableFont.createFont("宋体"),20, WritableFont.BOLD, false, UnderlineStyle.DOUBLE); 
 			WritableCellFormat firstFormat = new WritableCellFormat(first);
-			firstWriteSheet.mergeCells(0, writeMark, 9, writeMark);
+			firstWriteSheet.mergeCells(0, writeMark, 6, writeMark);	
+			firstWriteSheet.mergeCells(7, writeMark, 9, writeMark);	
 			Label label1 = new Label(0,writeMark,"佛山市南海蓝天鹅造纸有限公司送货单",firstFormat);
 			firstWriteSheet.addCell(label1);
+			WritableFont fontNo = new WritableFont(WritableFont.createFont("宋体"),11); 
+			WritableCellFormat formatNo = new WritableCellFormat(fontNo);
+			//formatNo.setVerticalAlignment(VerticalAlignment .CENTRE);
+			formatNo.setAlignment(Alignment.RIGHT);
+			Label labelNo = new Label(7,writeMark,"NO:DP"+numberString+number,formatNo);
+			number = number+1;
+			firstWriteSheet.addCell(labelNo);
+			
 			writeMark = writeMark +1;
 
-			WritableFont font2 = new WritableFont(WritableFont.createFont("宋体"),11, WritableFont.BOLD); 
+			WritableFont font2 = new WritableFont(WritableFont.createFont("宋体"),11); 
 			WritableCellFormat format = new WritableCellFormat(font2);
 			format.setVerticalAlignment(VerticalAlignment .CENTRE);
 			firstWriteSheet.mergeCells(0, writeMark, 9, writeMark);		
@@ -133,7 +151,8 @@ public class Bill {
 			firstWriteSheet.mergeCells(7, writeMark, 9, writeMark);	
 			Label label3 = new Label(0,writeMark,"客户:"+c1.getContents().trim(),format3);
 			firstWriteSheet.addCell(label3);
-			WritableCellFormat format32 = new WritableCellFormat(font3);
+			
+			WritableCellFormat format32 = new WritableCellFormat(fontNo);
 			format32.setVerticalAlignment(VerticalAlignment .CENTRE);
 			format32.setAlignment(Alignment.RIGHT);
 			Label label4 = new Label(7,writeMark,"日期:"+dfSimple.format(d),format32);
@@ -144,6 +163,7 @@ public class Bill {
 			WritableCellFormat format41 = new WritableCellFormat(font41);
 			format41.setVerticalAlignment(VerticalAlignment .CENTRE);
 			format41.setAlignment(Alignment.CENTRE);
+			format41.setBorder(jxl.format.Border.ALL, jxl.format.BorderLineStyle.THIN);
 			firstWriteSheet.mergeCells(0, writeMark, 3, writeMark);	
 			firstWriteSheet.mergeCells(4, writeMark, 5, writeMark);	
 			firstWriteSheet.mergeCells(6, writeMark, 7, writeMark);	
@@ -176,18 +196,27 @@ public class Bill {
 			Float price = Float.parseFloat(c2.getContents());
 			Float weightTotal = money*1000/price;
 			BigDecimal   b   =   new   BigDecimal(weightTotal); 
-			weightTotal =   b.setScale(2,   BigDecimal.ROUND_HALF_UP).floatValue();
-			Label label12 = new Label(6,writeMark,""+weightTotal,format51);
+			weightTotal =   b.setScale(0,   BigDecimal.ROUND_HALF_UP).floatValue();
+			Label label12 = new Label(6,writeMark,""+weightTotal.intValue(),format51);
 			firstWriteSheet.addCell(label12);
 			Label label13 = new Label(8,writeMark,c2.getContents(),format51);
 			firstWriteSheet.addCell(label13);
 			Label label14 = new Label(9,writeMark,c3.getContents(),format51);
 			firstWriteSheet.addCell(label14);
 			writeMark = writeMark+1;
+
 			
-			//the important thing,put out the array
-			List weightList = null;
-			int colMark=0;
+			//卷简宽度明细榜码
+			WritableFont fontConcept = new WritableFont(WritableFont.createFont("宋体"),11, WritableFont.BOLD); 
+			WritableCellFormat formatConcept = new WritableCellFormat(fontConcept);
+			formatConcept.setVerticalAlignment(VerticalAlignment .CENTRE);
+			formatConcept.setAlignment(Alignment.CENTRE);
+			formatConcept.setBorder(jxl.format.Border.ALL, jxl.format.BorderLineStyle.THIN);
+			firstWriteSheet.mergeCells(0, writeMark, 9, writeMark);	
+			Label labelConcept = new Label(0,writeMark,"卷  简  宽  度  明  细  榜  码",formatConcept);
+			firstWriteSheet.addCell(labelConcept);
+			writeMark = writeMark+1;
+			
 			//add border
 			for(int rowBorder = writeMark; rowBorder<writeMark+5; rowBorder++){
 				for(int c=0;c<10;c++){
@@ -196,6 +225,10 @@ public class Bill {
 					firstWriteSheet.addCell(labelAll);
 				}
 			}
+			
+			//the important thing,put out the array
+			List weightList = null;
+			int colMark=0;
 			for(int t=0; t<paperArray.length; t++){
 				weightList = paperArray[t].getWeight();
 				int weightSize = weightList.size();
@@ -223,28 +256,38 @@ public class Bill {
 							rowMark = writeMark+1;
 						}
 					}
-					if(rowMark != writeMark+4 ){
+					if(rowMark != writeMark+1 ){
 						colMark++;
 					}
 				}
 			}
 
 			writeMark = writeMark+5;
-			WritableCellFormat format111 = new WritableCellFormat(font51);
+			
+			WritableFont fontBottom = new WritableFont(WritableFont.createFont("宋体"),11); 
+			WritableCellFormat format111 = new WritableCellFormat(fontBottom);
 			format111.setVerticalAlignment(VerticalAlignment .CENTRE);
+			Label labelRemark = new Label(0,writeMark,"注：如有质量问题，可在收货后15日内向我厂提出，逾期我厂不予处理。",format111);
+			
+			firstWriteSheet.addCell(labelRemark);
+			writeMark = writeMark+1;
 			Label label15 = new Label(0,writeMark,"发货人：琼",format111);
 			firstWriteSheet.addCell(label15);
 			Label label16 = new Label(4,writeMark,"车号：",format111);
 			firstWriteSheet.addCell(label16);
-			Label label17 = new Label(7,writeMark,"签收单位：",format111);
+			int carRandom = r.nextInt(car.length-1);
+			Label label17 = new Label(5,writeMark,car[carRandom],format111);
 			firstWriteSheet.addCell(label17);
+			
+			Label label18 = new Label(7,writeMark,"签收单位：",format111);
+			firstWriteSheet.addCell(label18);
 			writeMark = writeMark+1;
 			
-			WritableCellFormat format121 = new WritableCellFormat(font51);
+			WritableCellFormat format121 = new WritableCellFormat(fontBottom);
 			format121.setVerticalAlignment(VerticalAlignment .CENTRE);
 			firstWriteSheet.mergeCells(0, writeMark, 6, writeMark);	
-			Label label18 = new Label(0,writeMark,"(1)存根(白)　(2)收款(红)　(3)收货仓库记帐(蓝)　(4)财务(黄)",format121);
-			firstWriteSheet.addCell(label18);
+			Label label19 = new Label(0,writeMark,"(1)存根(白)　(2)收款(红)　(3)收货仓库记帐(蓝)　(4)财务(黄)",format121);
+			firstWriteSheet.addCell(label19);
 			
 			writeMark = writeMark+3;
 			for(int m=0; m<writeMark;m++){
@@ -270,7 +313,7 @@ public class Bill {
 	public static Paper[] produceData(float price, float totalMoney){
 		float originalWeight = totalMoney*1000/price;   //单位kg
 		BigDecimal   b   =   new   BigDecimal(originalWeight); 
-		originalWeight =   b.setScale(2,   BigDecimal.ROUND_HALF_UP).floatValue();
+		originalWeight =   b.setScale(0,   BigDecimal.ROUND_HALF_UP).floatValue();
 		//get 1-5 size from size pool in random
 
 		int sizeLength = size.length;
@@ -323,6 +366,8 @@ public class Bill {
 				//random produce one weight
 				if(paperArray[mark].getMax()<weight){
 					float weightTemp = paperArray[mark].getMin()+r.nextInt(300);
+					BigDecimal   tempB   =   new   BigDecimal(weightTemp); 
+					weightTemp =   tempB.setScale(0,   BigDecimal.ROUND_HALF_UP).floatValue();
 					paperArray[mark].getWeight().add(weightTemp);
 					weight=weight-weightTemp;
 				}
